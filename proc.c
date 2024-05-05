@@ -6,6 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
+#include <sys/time.h>
 
 struct {
   struct spinlock lock;
@@ -19,6 +20,14 @@ extern void forkret(void);
 extern void trapret(void);
 
 static void wakeup1(void *chan);
+
+uint currentTimeMillis() {
+//    struct timeval time;
+//    gettimeofday(&time, DEFAULTIMEZONE);
+//    uint s1 = (uint)(time.tv_sec) * 1000;
+//    uint s2 = (time.tv_usec / 1000);
+    return 0;
+}
 
 void
 pinit(void)
@@ -194,6 +203,7 @@ fork(void)
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
+    np->ctime = currentTimeMillis();
     return -1;
   }
   np->sz = curproc->sz;

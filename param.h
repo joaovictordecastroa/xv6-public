@@ -16,3 +16,4 @@
 #define SCPULOOPSIZE            20
 #define SCPUITERACTIONS         100
 #define IOBOUNDINTERACTIONS     100
+#define DEFAULTIMEZONE          0

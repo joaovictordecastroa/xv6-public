@@ -48,9 +48,8 @@ void sanity(int n) {
     }
 }
 
-int main(int argc, char **argv) {
-    if (argc < 2)
-    {
+int main(int argc, char *argv[]) {
+    if (argc < 2) {
         printf(2, "Missing the number of programs in the arguments of function\n");
         exit();
     }
