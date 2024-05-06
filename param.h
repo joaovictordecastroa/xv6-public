@@ -17,3 +17,9 @@
 #define SCPUITERACTIONS         100
 #define IOBOUNDINTERACTIONS     100
 #define DEFAULTIMEZONE          0
+#define INTERV                  5
+#define PRIOONETOTWO            200
+#define PRIOTWOTOTHREE          100
+#define PRIOTHREETOFOUR         50
+#define LOWESTPRIO              1
+#define HIGHESTPRIO             4
