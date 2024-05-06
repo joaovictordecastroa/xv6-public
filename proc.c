@@ -183,7 +183,7 @@ int fork(void) {
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
-    np->ctime = uptime();
+//    np->ctime = uptime();
     return -1;
   }
   np->sz = curproc->sz;
