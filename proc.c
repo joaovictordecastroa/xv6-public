@@ -6,7 +6,7 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-#include <sys/time.h>
+//#include <sys/time.h>
 
 struct {
     struct spinlock lock;
@@ -208,6 +208,8 @@ int fork(void) {
   np->priority = LOWESTPRIO;
 
   release(&ptable.lock);
+
+  cprintf("New process created - PID: %d, Parent PID: %d\n", np->pid, myproc()->pid); //  Mensagem de depuração para mostrar informações sobre o novo processo criado
 
   return pid;
 }
