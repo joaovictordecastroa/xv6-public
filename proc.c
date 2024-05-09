@@ -83,7 +83,8 @@ static struct proc *allocproc(void) {
   found:
   p->state = EMBRYO;
   p->pid = nextpid++;
-
+  p->priority = LOWESTPRIO;
+  p->ctime = 0;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -105,7 +106,7 @@ static struct proc *allocproc(void) {
   sp -= sizeof *p->context;
   p->context = (struct context *) sp;
   memset(p->context, 0, sizeof *p->context);
-  p->context->eip = (uint) forkret;
+  p->context->eip = (uint) forkret;;
 
   return p;
 }
@@ -183,7 +184,6 @@ int fork(void) {
     kfree(np->kstack);
     np->kstack = 0;
     np->state = UNUSED;
-//    np->ctime = uptime();
     return -1;
   }
   np->sz = curproc->sz;
@@ -205,7 +205,6 @@ int fork(void) {
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
-  np->priority = LOWESTPRIO;
 
   release(&ptable.lock);
 

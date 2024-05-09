@@ -79,7 +79,7 @@ void sys_yield(void) {
 }
 
 int sys_change_prio(void) {
-  if (myproc()->killed || myproc()->state == RUNNING) {
+  if (myproc()->killed || myproc()->state == RUNNING || myproc()->priority == HIGHESTPRIO) {
     return -1;
   }
   myproc()->priority++;
