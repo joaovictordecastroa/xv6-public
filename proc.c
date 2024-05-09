@@ -84,9 +84,7 @@ static struct proc *allocproc(void) {
   p->state = EMBRYO;
   p->pid = nextpid++;
   p->priority = LOWESTPRIO;
-  acquire(&tickslock);
   p->ctime = ticks;
-  release(&tickslock);
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -210,8 +208,8 @@ int fork(void) {
 
   release(&ptable.lock);
 
-  cprintf("New process created - PID: %d, Parent PID: %d\n", np->pid,
-          myproc()->pid); //  Mensagem de depuração para mostrar informações sobre o novo processo criado
+  cprintf("New process created - PID: %d, Parent PID: %d, Creating tick: %d\n", np->pid,
+          myproc()->pid, np->ctime); //  Mensagem de depuração para mostrar informações sobre o novo processo criado
 
   return pid;
 }
@@ -239,6 +237,9 @@ void exit(void) {
   iput(curproc->cwd);
   end_op();
   curproc->cwd = 0;
+
+  cprintf("Process PID: %d runned for %d ticks\n", curproc->rutime); //  Mensagem de depuração para mostrar informações sobre o novo processo criado
+
 
   acquire(&ptable.lock);
 
@@ -497,4 +498,25 @@ void procdump(void) {
     }
     cprintf("\n");
   }
+}
+
+// Increment the rutime of all RUNNING processes
+// Increment the retime of all RUNNABLE processes
+// Increment te stime of all SLEEPING processess
+void
+uproctimes() {
+  struct proc *p;
+  acquire(&ptable.lock);
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->state == RUNNING) {
+      p->rutime++;
+    }
+    if (p->state == RUNNABLE) {
+      p->retime++;
+    }
+    if (p->state == SLEEPING) {
+      p->stime++;
+    }
+  }
+  release(&ptable.lock);
 }

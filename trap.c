@@ -47,23 +47,9 @@ trap(struct trapframe *tf) {
             if (cpuid() == 0) {
                 acquire(&tickslock);
                 ticks++;
+                uproctimes();
                 wakeup(&ticks);
                 release(&tickslock);
-
-                if (myproc() && myproc()->state == RUNNING) {
-                    myproc()->ctime++;
-                }
-                // Verificar se passou o intervalo de preempção (INTERV ticks)
-
-//                if (ticks > 0 && ticks % INTERV == 0) {
-//                    if (myproc() && myproc()->state == EMBRYO) {
-//                        cprintf("Process %d created at tick %d\n", myproc()->pid, myproc()->ctime);
-//                    }
-//                    if (myproc() && myproc()->state == RUNNING) {
-//                        cprintf("Preemption occurred for process %d at tick %d\n", myproc()->pid, ticks);
-//                        yield(); // Forçar o processo em execução a ceder a CPU
-//                    }
-//                }
             }
             lapiceoi();
             break;
