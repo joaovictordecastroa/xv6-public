@@ -85,6 +85,9 @@ static struct proc *allocproc(void) {
   p->pid = nextpid++;
   p->priority = LOWESTPRIO;
   p->ctime = ticks;
+  p->rutime = 0;
+  p->retime = 0;
+  p->stime = 0;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -237,9 +240,6 @@ void exit(void) {
   iput(curproc->cwd);
   end_op();
   curproc->cwd = 0;
-
-  cprintf("Process PID: %d runned for %d ticks\n", curproc->rutime); //  Mensagem de depuração para mostrar informações sobre o novo processo criado
-
 
   acquire(&ptable.lock);
 
