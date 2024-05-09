@@ -84,7 +84,9 @@ static struct proc *allocproc(void) {
   p->state = EMBRYO;
   p->pid = nextpid++;
   p->priority = LOWESTPRIO;
-  p->ctime = 0;
+  acquire(&tickslock);
+  p->ctime = ticks;
+  release(&tickslock);
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -208,7 +210,8 @@ int fork(void) {
 
   release(&ptable.lock);
 
-  cprintf("New process created - PID: %d, Parent PID: %d\n", np->pid, myproc()->pid); //  Mensagem de depuração para mostrar informações sobre o novo processo criado
+  cprintf("New process created - PID: %d, Parent PID: %d\n", np->pid,
+          myproc()->pid); //  Mensagem de depuração para mostrar informações sobre o novo processo criado
 
   return pid;
 }
