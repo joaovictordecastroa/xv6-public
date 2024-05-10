@@ -52,7 +52,7 @@ int sys_sleep(void) {
     return -1;
   acquire(&tickslock);
   ticks0 = ticks;
-  while (ticks - ticks0 < INTERV) {
+  while (ticks - ticks0 < 0) {
     if (myproc()->killed) {
       release(&tickslock);
       return -1;
