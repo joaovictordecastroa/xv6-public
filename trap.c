@@ -54,12 +54,12 @@ trap(struct trapframe *tf)
       wakeup(&ticks);
       release(&tickslock);
       // Verificar se passou o intervalo de preempção (INTERV ticks)
-      if (ticks > 0 && ticks % INTERV == 0) {
+      /*if (ticks > 0 && ticks % INTERV == 0) {
         if (myproc() && myproc()->state == RUNNING) {
           cprintf("Preemption occurred for process %d at tick %d\n", myproc()->pid, ticks);
           yield(); // Forçar o processo em execução a ceder a CPU
         }
-    }
+      }*/
     }
     lapiceoi();
     break;
@@ -109,9 +109,14 @@ trap(struct trapframe *tf)
 
   // Force process to give up CPU on clock tick.
   // If interrupts were on while locks held, would need to check nlock.
-  if(myproc() && myproc()->state == RUNNING &&
-     tf->trapno == T_IRQ0+IRQ_TIMER)
-    yield();
+  if(myproc() && myproc()->state == RUNNING && tf->trapno == T_IRQ0+IRQ_TIMER){
+    if (ticks > 0 && ticks % INTERV == 0) {
+      if (myproc() && myproc()->state == RUNNING) {
+          cprintf("Preemption occurred for process %d at tick %d\n", myproc()->pid, ticks);
+          yield(); // Forçar o processo em execução a ceder a CPU
+      }
+    }
+  }
 
   // Check if the process has been killed since we yielded
   if(myproc() && myproc()->killed && (tf->cs&3) == DPL_USER)
