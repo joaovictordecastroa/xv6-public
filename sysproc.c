@@ -17,7 +17,7 @@ int sys_exit(void) {
 }
 
 int sys_wait(void) {
-  return wait();
+  return wait2();
 }
 
 int sys_kill(void) {
@@ -79,9 +79,5 @@ void sys_yield(void) {
 }
 
 int sys_change_prio(void) {
-  if (myproc()->killed || myproc()->state == RUNNING || myproc()->priority == HIGHESTPRIO) {
-    return -1;
-  }
-  myproc()->priority++;
-  return 0;
+  return change_prio();
 }

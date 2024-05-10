@@ -303,6 +303,30 @@ int wait(void) {
   }
 }
 
+// Wait for a child process to exit and return its pid.
+// Return -1 if this process has no children.
+int wait2(void) {
+  struct proc *curproc = myproc();
+  struct proc *p;
+
+  acquire(&ptable.lock);
+  for (;;) {
+    // Scan through table looking for exited children.
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if (p->parent != curproc)
+        continue;
+      cprintf("Process %d runned for %d ticks, waited for %d ticks and sleped for %d ticks\n", p->pid,
+              p->rutime,
+              p->retime, p->stime);
+
+    }
+
+    release(&ptable.lock);
+
+    return wait();
+  }
+}
+
 //PAGEBREAK: 42
 // Per-CPU process scheduler.
 // Each CPU calls scheduler() after setting itself up.
@@ -311,39 +335,45 @@ int wait(void) {
 //  - swtch to start running that process
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
-void scheduler(void) {
-  struct proc *p;
-  struct cpu *c = mycpu();
-  c->proc = 0;
+  void scheduler(void) {
+    struct proc *p;
+    struct cpu *c = mycpu();
+    c->proc = 0;
 
-  for (;;) {
-    // Enable interrupts on this processor.
-    sti();
+    for (;;) {
+      // Enable interrupts on this processor.
+      sti();
 
-    // Loop over process table looking for process to run.
-    acquire(&ptable.lock);
-    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-      if (p->state != RUNNABLE)
-        continue;
+      // Loop over process table looking for process to run.
+      acquire(&ptable.lock);
+      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+        if (p->state != RUNNABLE)
+          continue;
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
+        if ((p->priority == 1 && p->retime >= PRIOONETOTWO) ||
+            (p->priority == 2 && p->retime >= PRIOONETOTWO + PRIOTWOTOTHREE) ||
+            (p->priority == 3 && p->retime >= PRIOONETOTWO + PRIOTWOTOTHREE + PRIOTHREETOFOUR)) {
+          cprintf("Change priority of process %d\n", p->pid);
+          change_prio();
+        }
+        // Switch to chosen process.  It is the process's job
+        // to release ptable.lock and then reacquire it
+        // before jumping back to us.
+        c->proc = p;
+        switchuvm(p);
+        p->state = RUNNING;
 
-      swtch(&(c->scheduler), p->context);
-      switchkvm();
+        swtch(&(c->scheduler), p->context);
+        switchkvm();
 
-      // Process is done running for now.
-      // It should have changed its p->state before coming back.
-      c->proc = 0;
+        // Process is done running for now.
+        // It should have changed its p->state before coming back.
+        c->proc = 0;
+      }
+      release(&ptable.lock);
+
     }
-    release(&ptable.lock);
-
   }
-}
 
 // Enter scheduler.  Must hold only ptable.lock
 // and have changed proc->state. Saves and restores
@@ -352,171 +382,179 @@ void scheduler(void) {
 // be proc->intena and proc->ncli, but that would
 // break in the few places where a lock is held but
 // there's no process.
-void sched(void) {
-  int intena;
-  struct proc *p = myproc();
+  void sched(void) {
+    int intena;
+    struct proc *p = myproc();
 
-  if (!holding(&ptable.lock))
-    panic("sched ptable.lock");
-  if (mycpu()->ncli != 1)
-    panic("sched locks");
-  if (p->state == RUNNING)
-    panic("sched running");
-  if (readeflags() & FL_IF)
-    panic("sched interruptible");
-  intena = mycpu()->intena;
-  swtch(&p->context, mycpu()->scheduler);
-  mycpu()->intena = intena;
-}
+    if (!holding(&ptable.lock))
+      panic("sched ptable.lock");
+    if (mycpu()->ncli != 1)
+      panic("sched locks");
+    if (p->state == RUNNING)
+      panic("sched running");
+    if (readeflags() & FL_IF)
+      panic("sched interruptible");
+    intena = mycpu()->intena;
+    swtch(&p->context, mycpu()->scheduler);
+    mycpu()->intena = intena;
+  }
 
 // Give up the CPU for one scheduling round.
-void yield(void) {
-  acquire(&ptable.lock);  //DOC: yieldlock
-  myproc()->state = RUNNABLE;
-  sched();
-  release(&ptable.lock);
-}
+  void yield(void) {
+    acquire(&ptable.lock);  //DOC: yieldlock
+    myproc()->state = RUNNABLE;
+    sched();
+    release(&ptable.lock);
+  }
 
 // A fork child's very first scheduling by scheduler()
 // will swtch here.  "Return" to user space.
-void forkret(void) {
-  static int first = 1;
-  // Still holding ptable.lock from scheduler.
-  release(&ptable.lock);
+  void forkret(void) {
+    static int first = 1;
+    // Still holding ptable.lock from scheduler.
+    release(&ptable.lock);
 
-  if (first) {
-    // Some initialization functions must be run in the context
-    // of a regular process (e.g., they call sleep), and thus cannot
-    // be run from main().
-    first = 0;
-    iinit(ROOTDEV);
-    initlog(ROOTDEV);
+    if (first) {
+      // Some initialization functions must be run in the context
+      // of a regular process (e.g., they call sleep), and thus cannot
+      // be run from main().
+      first = 0;
+      iinit(ROOTDEV);
+      initlog(ROOTDEV);
+    }
+
+    // Return to "caller", actually trapret (see allocproc).
   }
-
-  // Return to "caller", actually trapret (see allocproc).
-}
 
 // Atomically release lock and sleep on chan.
 // Reacquires lock when awakened.
-void sleep(void *chan, struct spinlock *lk) {
-  struct proc *p = myproc();
+  void sleep(void *chan, struct spinlock *lk) {
+    struct proc *p = myproc();
 
-  if (p == 0)
-    panic("sleep");
+    if (p == 0)
+      panic("sleep");
 
-  if (lk == 0)
-    panic("sleep without lk");
+    if (lk == 0)
+      panic("sleep without lk");
 
-  // Must acquire ptable.lock in order to
-  // change p->state and then call sched.
-  // Once we hold ptable.lock, we can be
-  // guaranteed that we won't miss any wakeup
-  // (wakeup runs with ptable.lock locked),
-  // so it's okay to release lk.
-  if (lk != &ptable.lock) {  //DOC: sleeplock0
-    acquire(&ptable.lock);  //DOC: sleeplock1
-    release(lk);
+    // Must acquire ptable.lock in order to
+    // change p->state and then call sched.
+    // Once we hold ptable.lock, we can be
+    // guaranteed that we won't miss any wakeup
+    // (wakeup runs with ptable.lock locked),
+    // so it's okay to release lk.
+    if (lk != &ptable.lock) {  //DOC: sleeplock0
+      acquire(&ptable.lock);  //DOC: sleeplock1
+      release(lk);
+    }
+    // Go to sleep.
+    p->chan = chan;
+    p->state = SLEEPING;
+
+    sched();
+
+    // Tidy up.
+    p->chan = 0;
+
+    // Reacquire original lock.
+    if (lk != &ptable.lock) {  //DOC: sleeplock2
+      release(&ptable.lock);
+      acquire(lk);
+    }
   }
-  // Go to sleep.
-  p->chan = chan;
-  p->state = SLEEPING;
-
-  sched();
-
-  // Tidy up.
-  p->chan = 0;
-
-  // Reacquire original lock.
-  if (lk != &ptable.lock) {  //DOC: sleeplock2
-    release(&ptable.lock);
-    acquire(lk);
-  }
-}
 
 //PAGEBREAK!
 // Wake up all processes sleeping on chan.
 // The ptable lock must be held.
-static void wakeup1(void *chan) {
-  struct proc *p;
+  static void wakeup1(void *chan) {
+    struct proc *p;
 
-  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
-    if (p->state == SLEEPING && p->chan == chan)
-      p->state = RUNNABLE;
-}
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++)
+      if (p->state == SLEEPING && p->chan == chan)
+        p->state = RUNNABLE;
+  }
 
 // Wake up all processes sleeping on chan.
-void wakeup(void *chan) {
-  acquire(&ptable.lock);
-  wakeup1(chan);
-  release(&ptable.lock);
-}
+  void wakeup(void *chan) {
+    acquire(&ptable.lock);
+    wakeup1(chan);
+    release(&ptable.lock);
+  }
 
 // Kill the process with the given pid.
 // Process won't exit until it returns
 // to user space (see trap in trap.c).
-int kill(int pid) {
-  struct proc *p;
+  int kill(int pid) {
+    struct proc *p;
 
-  acquire(&ptable.lock);
-  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-    if (p->pid == pid) {
-      p->killed = 1;
-      // Wake process from sleep if necessary.
-      if (p->state == SLEEPING)
-        p->state = RUNNABLE;
-      release(&ptable.lock);
-      return 0;
+    acquire(&ptable.lock);
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if (p->pid == pid) {
+        p->killed = 1;
+        // Wake process from sleep if necessary.
+        if (p->state == SLEEPING)
+          p->state = RUNNABLE;
+        release(&ptable.lock);
+        return 0;
+      }
     }
+    release(&ptable.lock);
+    return -1;
   }
-  release(&ptable.lock);
-  return -1;
-}
 
 //PAGEBREAK: 36
 // Print a process listing to console.  For debugging.
 // Runs when user types ^P on console.
 // No lock to avoid wedging a stuck machine further.
-void procdump(void) {
-  static char *states[] = {[UNUSED]    "unused", [EMBRYO]    "embryo", [SLEEPING]  "sleep ", [RUNNABLE]  "runble", [RUNNING]   "run   ", [ZOMBIE]    "zombie"};
-  int i;
-  struct proc *p;
-  char *state;
-  uint pc[10];
+  void procdump(void) {
+    static char *states[] = {[UNUSED]    "unused", [EMBRYO]    "embryo", [SLEEPING]  "sleep ", [RUNNABLE]  "runble", [RUNNING]   "run   ", [ZOMBIE]    "zombie"};
+    int i;
+    struct proc *p;
+    char *state;
+    uint pc[10];
 
-  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-    if (p->state == UNUSED)
-      continue;
-    if (p->state >= 0 && p->state < NELEM(states) && states[p->state])
-      state = states[p->state];
-    else
-      state = "???";
-    cprintf("%d %s %s", p->pid, state, p->name);
-    if (p->state == SLEEPING) {
-      getcallerpcs((uint *) p->context->ebp + 2, pc);
-      for (i = 0; i < 10 && pc[i] != 0; i++)
-        cprintf(" %p", pc[i]);
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if (p->state == UNUSED)
+        continue;
+      if (p->state >= 0 && p->state < NELEM(states) && states[p->state])
+        state = states[p->state];
+      else
+        state = "???";
+      cprintf("%d %s %s", p->pid, state, p->name);
+      if (p->state == SLEEPING) {
+        getcallerpcs((uint *) p->context->ebp + 2, pc);
+        for (i = 0; i < 10 && pc[i] != 0; i++)
+          cprintf(" %p", pc[i]);
+      }
+      cprintf("\n");
     }
-    cprintf("\n");
   }
-}
 
 // Increment the rutime of all RUNNING processes
 // Increment the retime of all RUNNABLE processes
 // Increment te stime of all SLEEPING processess
-void
-uproctimes() {
-  struct proc *p;
-  acquire(&ptable.lock);
-  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-    if (p->state == RUNNING) {
-      p->rutime++;
+  void
+  uproctimes() {
+    struct proc *p;
+    acquire(&ptable.lock);
+    for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if (p->state == RUNNING) {
+        p->rutime++;
+      }
+      if (p->state == RUNNABLE) {
+        p->retime++;
+      }
+      if (p->state == SLEEPING) {
+        p->stime++;
+      }
     }
-    if (p->state == RUNNABLE) {
-      p->retime++;
-    }
-    if (p->state == SLEEPING) {
-      p->stime++;
-    }
+    release(&ptable.lock);
   }
-  release(&ptable.lock);
-}
+
+  int change_prio(void) {
+    if (myproc()->killed || myproc()->state == RUNNING || myproc()->priority == HIGHESTPRIO) {
+      return -1;
+    }
+    myproc()->priority++;
+    return 0;
+  }
