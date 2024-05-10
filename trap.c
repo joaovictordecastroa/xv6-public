@@ -42,38 +42,44 @@ trap(struct trapframe *tf) {
         return;
     }
 
-    switch (tf->trapno) {
-        case T_IRQ0 + IRQ_TIMER:
-            if (cpuid() == 0) {
-                acquire(&tickslock);
-                ticks++;
-                uproctimes();
-                wakeup(&ticks);
-                release(&tickslock);
-            }
-            lapiceoi();
-            break;
-        case T_IRQ0 + IRQ_IDE:
-            ideintr();
-            lapiceoi();
-            break;
-        case T_IRQ0 + IRQ_IDE + 1:
-            // Bochs generates spurious IDE1 interrupts.
-            break;
-        case T_IRQ0 + IRQ_KBD:
-            kbdintr();
-            lapiceoi();
-            break;
-        case T_IRQ0 + IRQ_COM1:
-            uartintr();
-            lapiceoi();
-            break;
-        case T_IRQ0 + 7:
-        case T_IRQ0 + IRQ_SPURIOUS:
-            cprintf("cpu%d: spurious interrupt at %x:%x\n",
-                    cpuid(), tf->cs, tf->eip);
-            lapiceoi();
-            break;
+  switch(tf->trapno){
+  case T_IRQ0 + IRQ_TIMER:
+    if(cpuid() == 0){
+      acquire(&tickslock);
+      ticks++;
+      wakeup(&ticks);
+      release(&tickslock);
+      // Verificar se passou o intervalo de preempção (INTERV ticks)
+      if (ticks > 0 && ticks % INTERV == 0) {
+        if (myproc() && myproc()->state == RUNNING) {
+          cprintf("Preemption occurred for process %d at tick %d\n", myproc()->pid, ticks);
+          yield(); // Forçar o processo em execução a ceder a CPU
+        }
+    }
+    }
+    lapiceoi();
+    break;
+  case T_IRQ0 + IRQ_IDE:
+    ideintr();
+    lapiceoi();
+    break;
+  case T_IRQ0 + IRQ_IDE+1:
+    // Bochs generates spurious IDE1 interrupts.
+    break;
+  case T_IRQ0 + IRQ_KBD:
+    kbdintr();
+    lapiceoi();
+    break;
+  case T_IRQ0 + IRQ_COM1:
+    uartintr();
+    lapiceoi();
+    break;
+  case T_IRQ0 + 7:
+  case T_IRQ0 + IRQ_SPURIOUS:
+    cprintf("cpu%d: spurious interrupt at %x:%x\n",
+            cpuid(), tf->cs, tf->eip);
+    lapiceoi();
+    break;
 
             //PAGEBREAK: 13
         default:
@@ -97,11 +103,11 @@ trap(struct trapframe *tf) {
     if (myproc() && myproc()->killed && (tf->cs & 3) == DPL_USER)
         exit();
 
-    // Force process to give up CPU on clock tick.
-    // If interrupts were on while locks held, would need to check nlock.
-    if (myproc() && myproc()->state == RUNNING &&
-        tf->trapno == T_IRQ0 + IRQ_TIMER)
-        yield();
+  // Force process to give up CPU on clock tick.
+  // If interrupts were on while locks held, would need to check nlock.
+  if(myproc() && myproc()->state == RUNNING &&
+     tf->trapno == T_IRQ0+IRQ_TIMER)
+    yield();
 
     // Check if the process has been killed since we yielded
     if (myproc() && myproc()->killed && (tf->cs & 3) == DPL_USER)
