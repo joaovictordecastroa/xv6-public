@@ -24,8 +24,6 @@ void sanity(int n) {
           }
         }
 
-        printf(1, "CPU-BOUND %d process finished\n", getpid());
-
         exit();
       } else if (getpid() % 3 == 1) // S-CPU
       {
@@ -37,19 +35,14 @@ void sanity(int n) {
           yield();
         }
 
-        printf(1, "S-BOUND %d process finished\n", getpid());
-
         exit();
       } else if (getpid() % 3 == 2) {
         for (int l = 0; l < IOBOUNDINTERACTIONS; l++) {
           sleep(1);
         }
 
-        printf(1, "IO-BOUND %d process finished\n", getpid());
-
         exit();
       } else {
-        printf(1, "Process %d failed to fork\n", getpid());
 
         exit();
       }
