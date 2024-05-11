@@ -20,8 +20,17 @@ int sys_wait(void) {
   return wait();
 }
 
-int sys_wait2(void) {
-  return wait2();
+int sys_wait2 (void){
+  int *retime;
+  int *rutime;
+  int *stime;
+  if(argptr(0,(void*)&retime,sizeof(int*)) < 0)
+    return -1;
+  if(argptr(1,(void*)&rutime, sizeof(int*)) < 0)
+    return -1;
+  if(argptr(2,(void*)&stime, sizeof(int*)) < 0)
+    return -1;
+  return wait2(retime, rutime, stime);
 }
 
 int sys_kill(void) {

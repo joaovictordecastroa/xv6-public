@@ -305,7 +305,7 @@ int wait(void) {
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
-int wait2(void) {
+int wait2(int* retime, int* rutime, int* stime) {
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
@@ -320,9 +320,9 @@ int wait2(void) {
       havekids = 1;
       if (p->state == ZOMBIE) {
         // Found one.
-        cprintf("Process %d runned for %d ticks, waited for %d ticks and sleped for %d ticks\n", p->pid,
+        /*cprintf("Process %d runned for %d ticks, waited for %d ticks and sleped for %d ticks\n", p->pid,
                 p->rutime,
-                p->retime, p->stime);
+                p->retime, p->stime);*/
         pid = p->pid;
         kfree(p->kstack);
         p->kstack = 0;
@@ -332,6 +332,11 @@ int wait2(void) {
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+
+        //Update values
+        *retime = p->retime;
+        *rutime = p->rutime;
+        *stime = p->stime;
 
         release(&ptable.lock);
         return pid;
