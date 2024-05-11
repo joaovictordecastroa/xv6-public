@@ -566,16 +566,17 @@ uproctimes() {
   acquire(&ptable.lock);
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
     if (p->state == RUNNING) {
-      p->rutime++;
+      p->rutime = p->rutime + 1;
     }
 
     if (p->state == RUNNABLE) {
-      p->retime++;
+      p->retime = p->retime + 1;
     }
 
     if (p->state == SLEEPING) {
-      p->stime++;
+      p->stime = p->stime + 1;
     }
+
   }
   release(&ptable.lock);
 }

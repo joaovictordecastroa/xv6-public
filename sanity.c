@@ -17,7 +17,7 @@ void sanity(int n) {
     {
       int retime, rutime, stime;
       pid = wait2(&retime, &rutime, &stime);
-      printf(1, "%d Waiting Time : %d  Running Time : %d  Sleep time : %d\n",pid,retime, rutime, stime);
+      printf(1, "%d |Waiting Time : %d|  Running Time : %d|  Sleep time : %d|\n",pid,retime, rutime, stime);
     } else if (pid == 0) { // Child
       if (getpid() % 3 == 0)  // CPU-BOUND
       {
