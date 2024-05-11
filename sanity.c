@@ -14,7 +14,7 @@ void sanity(int n) {
 
     if (pid > 0) // Father
     {
-      pid = wait();
+      pid = wait2();
     } else if (pid == 0) { // Child
       if (getpid() % 3 == 0)  // CPU-BOUND
       {

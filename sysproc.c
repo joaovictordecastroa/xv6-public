@@ -17,6 +17,10 @@ int sys_exit(void) {
 }
 
 int sys_wait(void) {
+  return wait();
+}
+
+int sys_wait2(void) {
   return wait2();
 }
 
