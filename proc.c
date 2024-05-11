@@ -85,9 +85,6 @@ static struct proc *allocproc(void) {
   p->pid = nextpid++;
   p->priority = LOWESTPRIO;
   p->ctime = ticks;
-  p->rutime = 0;
-  p->retime = 0;
-  p->stime = 0;
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -566,15 +563,15 @@ uproctimes() {
   acquire(&ptable.lock);
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
     if (p->state == RUNNING) {
-      p->rutime = p->rutime + 1;
+      p->rutime++;
     }
 
     if (p->state == RUNNABLE) {
-      p->retime = p->retime + 1;
+      p->retime++;
     }
 
     if (p->state == SLEEPING) {
-      p->stime = p->stime + 1;
+      p->stime++;
     }
 
   }

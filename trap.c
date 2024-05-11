@@ -90,7 +90,6 @@ trap(struct trapframe *tf) {
                     tf->err, cpuid(), tf->eip, rcr2());
             myproc()->killed = 1;
     }
-    uproctimes();
 
     // Force process exit if it has been killed and is in user space.
     // (If it is still executing in the kernel, let it keep running
