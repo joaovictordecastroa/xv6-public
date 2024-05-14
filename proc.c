@@ -7,19 +7,22 @@
 #include "proc.h"
 #include "spinlock.h"
 
-struct {
-    struct spinlock lock;
-    struct proc proc[NPROC];
-} ptable;
 
-
-struct { // FCFS
-    struct spinlock lock;
+struct lpqueue { // FCFS
     struct proc *array[NPROC];
     struct proc *front;
     struct proc *back;
     int size;
-} lpqueue;
+};
+
+struct {
+    struct spinlock lock;
+    struct proc proc[NPROC];
+    struct lpqueue lpqueue;
+} ptable;
+
+
+
 
 
 static struct proc *initproc;
@@ -189,18 +192,6 @@ int fork(void) {
     return -1;
   }
 
-  acquire(&lpqueue.lock);
-
-  if (lpqueue.size == 0) {
-    lpqueue.front = np;
-  }
-
-  lpqueue.array[lpqueue.size] = np;
-  lpqueue.size++;
-  lpqueue.back = np;
-
-  release(&lpqueue.lock);
-
 
   // Copy process state from proc.
   if ((np->pgdir = copyuvm(curproc->pgdir, curproc->sz)) == 0) {
@@ -228,6 +219,18 @@ int fork(void) {
   acquire(&ptable.lock);
 
   np->state = RUNNABLE;
+
+  if (np->pid > 2) {
+    cprintf("fork: lpqueue\n");
+
+    if (ptable.lpqueue.size == 0) {
+      ptable.lpqueue.front = np;
+    }
+
+    ptable.lpqueue.array[ptable.lpqueue.size] = np;
+    ptable.lpqueue.size++;
+    ptable.lpqueue.back = np;
+  }
 
   release(&ptable.lock);
 
@@ -409,8 +412,8 @@ void scheduler(void) {
 //        p->stime++;
 //      }
 
-      if (p->state != RUNNABLE)
-        continue;
+//      if (p->state != RUNNABLE)
+//        continue;
 
 //      if (p->pid > 2) {
 //        switch(p->priority){
@@ -442,19 +445,19 @@ void scheduler(void) {
 //      c->proc = 0;
     }
 
-    acquire(&lpqueue.lock);
 
-    if (lpqueue.size > 0) {
+    if (ptable.lpqueue.size > 0) {
+      cprintf("scheduler: fcfs scheduler\n");
       // Switch to first process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
-      p = lpqueue.array[0];
-      lpqueue.front = lpqueue.array[1];
-      lpqueue.back = lpqueue.array[lpqueue.size - 1];
-      for (int j = 0; j < lpqueue.size - 1; j++) {
-        lpqueue.array[j] = lpqueue.array[j + 1];
+      p = ptable.lpqueue.array[0];
+      ptable.lpqueue.front = ptable.lpqueue.array[1];
+      ptable.lpqueue.back = ptable.lpqueue.array[ptable.lpqueue.size - 1];
+      for (int j = 0; j < ptable.lpqueue.size - 1; j++) {
+        ptable.lpqueue.array[j] = ptable.lpqueue.array[j + 1];
       }
-      lpqueue.size--;
+      ptable.lpqueue.size--;
       c->proc = p;
       switchuvm(p);
       p->state = RUNNING;
@@ -501,7 +504,6 @@ void scheduler(void) {
       }
     }
 
-    release(&lpqueue.lock);
     release(&ptable.lock);
 
   }
