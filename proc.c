@@ -6,7 +6,6 @@
 #include "x86.h"
 #include "proc.h"
 #include "spinlock.h"
-//#include <sys/time.h>
 
 struct {
     struct spinlock lock;
@@ -85,6 +84,7 @@ static struct proc *allocproc(void) {
   p->pid = nextpid++;
   p->priority = LOWESTPRIO;
   p->ctime = ticks;
+
   release(&ptable.lock);
 
   // Allocate kernel stack.
@@ -107,6 +107,8 @@ static struct proc *allocproc(void) {
   p->context = (struct context *) sp;
   memset(p->context, 0, sizeof *p->context);
   p->context->eip = (uint) forkret;;
+
+  enqueue(lowestpriorityqueue,p->pid);
 
   return p;
 }
@@ -145,6 +147,13 @@ void userinit(void) {
   p->state = RUNNABLE;
 
   release(&ptable.lock);
+
+
+
+  lowestpriorityqueue = createQueue(NPROC);
+  midpriorityqueue = createQueue(NPROC);
+  highpriorityqueue = createQueue(NPROC);
+  highestpriorityqueue = createQueue(NPROC);
 }
 
 // Grow current process's memory by n bytes.
@@ -208,8 +217,8 @@ int fork(void) {
 
   release(&ptable.lock);
 
-  cprintf("New process created - PID: %d, Parent PID: %d, Creating tick: %d\n", np->pid,
-          myproc()->pid, np->ctime); //  Mensagem de depuração para mostrar informações sobre o novo processo criado
+//  cprintf("New process created - PID: %d, Parent PID: %d, Creating tick: %d\n", np->pid,
+//          myproc()->pid, np->ctime); //  Mensagem de depuração para mostrar informações sobre o novo processo criado
 
   return pid;
 }
@@ -302,7 +311,7 @@ int wait(void) {
 
 // Wait for a child process to exit and return its pid.
 // Return -1 if this process has no children.
-int wait2(int* retime, int* rutime, int* stime) {
+int wait2(int *retime, int *rutime, int *stime) {
   struct proc *p;
   int havekids, pid;
   struct proc *curproc = myproc();
@@ -329,6 +338,8 @@ int wait2(int* retime, int* rutime, int* stime) {
         p->name[0] = 0;
         p->killed = 0;
         p->state = UNUSED;
+
+//        cprintf("\nwait2: Process %d runned for %d, waited for %d and sleeped for %d\n", pid, p->rutime, p->retime, p->stime);
 
         //Update values
         *retime = p->retime;
@@ -368,18 +379,59 @@ void scheduler(void) {
     // Enable interrupts on this processor.
     sti();
 
+    if (isEmpty(highestpriorityqueue) > 0) {
+//      TO-DO: Implementar método de escalonamento da fila de altíssima prioridade
+    }
+
+    if (isEmpty(highpriorityqueue) > 0) {
+//      TO-DO: Implementar método de escalonamento da fila de alta prioridade
+    }
+
+    if (isEmpty(midpriorityqueue) > 0) {
+//      TO-DO: Implementar método de escalonamento da fila de média prioridade
+    }
+
+    if (isEmpty(lowestpriorityqueue) > 0) {
+//      TO-DO: Implementar método de escalonamento da fila de baixa prioridade
+      for (int i = 0; i < lowestpriorityqueue->size; i++){
+        cprintf("scheduler: lowestpriorityqueue item pid %d", lowestpriorityqueue->array[i]);
+      }
+    }
+
     // Loop over process table looking for process to run.
     acquire(&ptable.lock);
+
+
     for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+      if (p->state == RUNNING)
+        p->rutime++;
+
+      if (p->state == RUNNABLE)
+        p->retime++;
+
+// TO-DO: How we update the sleep?
+//      if (p->state == SLEEPING) {
+//        p->stime++;
+//      }
+
       if (p->state != RUNNABLE)
         continue;
 
-      if ((p->priority == 1 && p->retime >= PRIOONETOTWO) ||
-          (p->priority == 2 && p->retime >= PRIOONETOTWO + PRIOTWOTOTHREE) ||
-          (p->priority == 3 && p->retime >= PRIOONETOTWO + PRIOTWOTOTHREE + PRIOTHREETOFOUR)) {
-        cprintf("Change priority of process %d\n", p->pid);
-        change_prio();
+      if (p->pid > 2) {
+        switch(p->priority){
+          case 1:
+
+          default:
+            break;
+        }
+
+        if ((p->priority == 1 && p->retime >= PRIOONETOTWO) ||
+            (p->priority == 2 && p->retime >= PRIOONETOTWO + PRIOTWOTOTHREE) ||
+            (p->priority == 3 && p->retime >= PRIOONETOTWO + PRIOTWOTOTHREE + PRIOTHREETOFOUR)) {
+          change_prio(p->pid, p->priority + 1);
+        }
       }
+
       // Switch to chosen process.  It is the process's job
       // to release ptable.lock and then reacquire it
       // before jumping back to us.
@@ -474,6 +526,7 @@ void sleep(void *chan, struct spinlock *lk) {
   // Go to sleep.
   p->chan = chan;
   p->state = SLEEPING;
+  p->stime++;
 
   sched();
 
@@ -562,6 +615,10 @@ uproctimes() {
   struct proc *p;
   acquire(&ptable.lock);
   for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid >= 3)
+      cprintf("uproctimes: pid %d with metrics rutime %d, rtime %d, stime %d\n", p->pid, p->rutime, p->retime,
+              p->stime);
+
     if (p->state == RUNNING) {
       p->rutime++;
     }
@@ -573,15 +630,25 @@ uproctimes() {
     if (p->state == SLEEPING) {
       p->stime++;
     }
-
   }
+
   release(&ptable.lock);
 }
 
-int change_prio(void) {
-  if (myproc()->killed || myproc()->state == RUNNING || myproc()->priority == HIGHESTPRIO) {
-    return -1;
+int change_prio(int pid, int priority) {
+  struct proc *p;
+
+  for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
+    if (p->pid == pid) {
+      cprintf("change_prio: pid %d changed prio %d \n", p->pid, p->priority);
+
+      if (p->killed != 0 || p->state == RUNNING || p->priority == HIGHESTPRIO) {
+        return -1;
+      }
+
+      p->priority = priority;
+    }
   }
-  myproc()->priority++;
-  return 0;
+
+  return 23;
 }

@@ -17,7 +17,7 @@ void sanity(int n) {
     {
       int retime, rutime, stime;
       pid = wait2(&retime, &rutime, &stime);
-      printf(1, "%d |Waiting Time : %d|  Running Time : %d|  Sleep time : %d|\n",pid,retime, rutime, stime);
+      printf(1, "sanity: %d |Waiting Time : %d|  Running Time : %d|  Sleep time : %d|\n",pid,retime, rutime, stime);
     } else if (pid == 0) { // Child
       if (getpid() % 3 == 0)  // CPU-BOUND
       {
@@ -26,6 +26,8 @@ void sanity(int n) {
             // do-nothing
           }
         }
+
+//        printf(1, "End CPU\n");
 
         exit();
       } else if (getpid() % 3 == 1) // S-CPU
@@ -38,11 +40,15 @@ void sanity(int n) {
           yield();
         }
 
+//        printf(1, "End S-CPU\n");
+
         exit();
       } else if (getpid() % 3 == 2) {
         for (int l = 0; l < IOBOUNDINTERACTIONS; l++) {
           sleep(1);
         }
+
+//        printf(1, "End IO-CPU\n");
 
         exit();
       } else {
@@ -62,7 +68,7 @@ int main(int argc, char *argv[]) {
 
   int numProcesses = atoi(argv[1]);
 
-  printf(1, "Running %d programs\n", numProcesses);
+//  printf(1, "Running %d programs\n", numProcesses);
 
   sanity(numProcesses);
 

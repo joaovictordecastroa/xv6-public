@@ -1,4 +1,6 @@
 #include "types.h"
+#include "param.h"
+#include "queue.h"
 
 // Per-CPU state
 struct cpu {
@@ -65,3 +67,9 @@ struct proc {
 //   original data and bss
 //   fixed-size stack
 //   expandable heap
+
+
+struct Queue* lowestpriorityqueue;
+struct Queue* midpriorityqueue;
+struct Queue* highpriorityqueue;
+struct Queue* highestpriorityqueue;

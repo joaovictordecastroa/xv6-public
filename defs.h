@@ -122,7 +122,7 @@ int             wait2(int*, int*, int*);
 void            wakeup(void*);
 void            yield(void);
 int             uptime(void);
-int             change_prio(void);
+int             change_prio(int, int);
 void            uproctimes(void);
 
 // swtch.S

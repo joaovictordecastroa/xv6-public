@@ -72,7 +72,7 @@ int sys_sleep(void) {
     }
     sleep(&ticks, &tickslock);
   }
-  release(&tickslock);
+  release(&tickslock) ;
   return 0;
 }
 
@@ -92,5 +92,12 @@ void sys_yield(void) {
 }
 
 int sys_change_prio(void) {
-  return change_prio();
+  int pid;
+  int priority;
+  if(argptr(0,(void*)&pid,sizeof(int*)) < 0)
+    return -1;
+  if(argptr(0,(void*)&priority,sizeof(int*)) < 0)
+    return -1;
+
+  return change_prio(pid, priority);
 }
