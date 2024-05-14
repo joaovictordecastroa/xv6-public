@@ -1,6 +1,5 @@
 #include "types.h"
 #include "param.h"
-#include "queue.h"
 
 // Per-CPU state
 struct cpu {
@@ -69,7 +68,20 @@ struct proc {
 //   expandable heap
 
 
-struct Queue* lowestpriorityqueue;
-struct Queue* midpriorityqueue;
-struct Queue* highpriorityqueue;
-struct Queue* highestpriorityqueue;
+//struct Queue* lowestpriorityqueue;
+//struct Queue* midpriorityqueue;
+//struct Queue* highpriorityqueue;
+//struct Queue* highestpriorityqueue;
+
+
+//struct fcfs *midpriorityqueue;
+//
+//struct rr { // RR
+//    int array[NPROC];
+//    int front;
+//    int back;
+//    int size;
+//};
+//
+//struct rr highpriorityqueue;
+//struct rr highestpriorityqueue;
