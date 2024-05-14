@@ -7,22 +7,10 @@
 #include "proc.h"
 #include "spinlock.h"
 
-
-struct lpqueue { // FCFS
-    struct proc *array[NPROC];
-    struct proc *front;
-    struct proc *back;
-    int size;
-};
-
 struct {
     struct spinlock lock;
     struct proc proc[NPROC];
-    struct lpqueue lpqueue;
 } ptable;
-
-
-
 
 
 static struct proc *initproc;
@@ -220,18 +208,6 @@ int fork(void) {
 
   np->state = RUNNABLE;
 
-  if (np->pid > 2) {
-    cprintf("fork: lpqueue\n");
-
-    if (ptable.lpqueue.size == 0) {
-      ptable.lpqueue.front = np;
-    }
-
-    ptable.lpqueue.array[ptable.lpqueue.size] = np;
-    ptable.lpqueue.size++;
-    ptable.lpqueue.back = np;
-  }
-
   release(&ptable.lock);
 
 //  cprintf("New process created - PID: %d, Parent PID: %d, Creating tick: %d\n", np->pid,
@@ -388,7 +364,8 @@ int wait2(int *retime, int *rutime, int *stime) {
 //  - eventually that process transfers control
 //      via swtch back to the scheduler.
 void scheduler(void) {
-  struct proc *p;
+  struct proc *p = 0;
+  struct proc *lqp = 0;
   struct cpu *c = mycpu();
   c->proc = 0;
 
@@ -412,8 +389,19 @@ void scheduler(void) {
 //        p->stime++;
 //      }
 
-//      if (p->state != RUNNABLE)
-//        continue;
+      if (p->state != RUNNABLE)
+        continue;
+
+      cprintf("Process %d runnable\n", p->pid);
+
+      if (lqp != 0) {
+        if (p->ctime < lqp->ctime)
+          lqp = p;
+      } else {
+        lqp = p;
+      }
+    }
+
 
 //      if (p->pid > 2) {
 //        switch(p->priority){
@@ -430,78 +418,21 @@ void scheduler(void) {
 //        }
 //      }
 
-      // Switch to chosen process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-//      c->proc = p;
-//      switchuvm(p);
-//      p->state = RUNNING;
-//
-//      swtch(&(c->scheduler), p->context);
-//      switchkvm();
-//
-//      // Process is done running for now.
-//      // It should have changed its p->state before coming back.
-//      c->proc = 0;
-    }
+    // Switch to chosen process.  It is the process's job
+    // to release ptable.lock and then reacquire it
+    // before jumping back to us.
+    if (lqp != 0) {
+      cprintf("pid %d selected for running em fcfs\n", lqp->pid);
+      c->proc = lqp;
+      switchuvm(lqp);
+      lqp->state = RUNNING;
 
-
-    if (ptable.lpqueue.size > 0) {
-      cprintf("scheduler: fcfs scheduler\n");
-      // Switch to first process.  It is the process's job
-      // to release ptable.lock and then reacquire it
-      // before jumping back to us.
-      p = ptable.lpqueue.array[0];
-      ptable.lpqueue.front = ptable.lpqueue.array[1];
-      ptable.lpqueue.back = ptable.lpqueue.array[ptable.lpqueue.size - 1];
-      for (int j = 0; j < ptable.lpqueue.size - 1; j++) {
-        ptable.lpqueue.array[j] = ptable.lpqueue.array[j + 1];
-      }
-      ptable.lpqueue.size--;
-      c->proc = p;
-      switchuvm(p);
-      p->state = RUNNING;
-
-      swtch(&(c->scheduler), p->context);
+      swtch(&(c->scheduler), lqp->context);
       switchkvm();
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
-    } else {
-      for (p = ptable.proc; p < &ptable.proc[NPROC]; p++) {
-        if (p->state != RUNNABLE)
-          continue;
-
-//      if (p->pid > 2) {
-//        switch(p->priority){
-//          case 1:
-//
-//          default:
-//            break;
-//        }
-//
-//        if ((p->priority == 1 && p->retime >= PRIOONETOTWO) ||
-//            (p->priority == 2 && p->retime >= PRIOONETOTWO + PRIOTWOTOTHREE) ||
-//            (p->priority == 3 && p->retime >= PRIOONETOTWO + PRIOTWOTOTHREE + PRIOTHREETOFOUR)) {
-//          change_prio(p->pid, p->priority + 1);
-//        }
-//      }
-
-        // Switch to chosen process.  It is the process's job
-        // to release ptable.lock and then reacquire it
-        // before jumping back to us.
-        c->proc = p;
-        switchuvm(p);
-        p->state = RUNNING;
-
-        swtch(&(c->scheduler), p->context);
-        switchkvm();
-
-        // Process is done running for now.
-        // It should have changed its p->state before coming back.
-        c->proc = 0;
-      }
     }
 
     release(&ptable.lock);
