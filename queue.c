@@ -1,4 +1,5 @@
 #include "queue.h"
+#include "types.h"
 
 
 // function to create a queue

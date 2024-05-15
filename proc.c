@@ -365,7 +365,7 @@ int wait2(int *retime, int *rutime, int *stime) {
 //      via swtch back to the scheduler.
 void scheduler(void) {
   struct proc *p = 0;
-  struct proc *lqp = 0;
+  //struct proc *lqp = 0;
   struct cpu *c = mycpu();
   c->proc = 0;
 
@@ -391,7 +391,7 @@ void scheduler(void) {
 
       if (p->state != RUNNABLE)
         continue;
-
+      /*
       cprintf("Process %d runnable\n", p->pid);
 
       if (lqp != 0) {
@@ -399,8 +399,8 @@ void scheduler(void) {
           lqp = p;
       } else {
         lqp = p;
-      }
-    }
+      }*/
+    
 
 
 //      if (p->pid > 2) {
@@ -421,20 +421,19 @@ void scheduler(void) {
     // Switch to chosen process.  It is the process's job
     // to release ptable.lock and then reacquire it
     // before jumping back to us.
-    if (lqp != 0) {
-      cprintf("pid %d selected for running em fcfs\n", lqp->pid);
-      c->proc = lqp;
-      switchuvm(lqp);
-      lqp->state = RUNNING;
 
-      swtch(&(c->scheduler), lqp->context);
+      c->proc = p;
+      switchuvm(p);
+      p->state = RUNNING;
+
+      swtch(&(c->scheduler), p->context);
       switchkvm();
 
       // Process is done running for now.
       // It should have changed its p->state before coming back.
       c->proc = 0;
+    
     }
-
     release(&ptable.lock);
 
   }

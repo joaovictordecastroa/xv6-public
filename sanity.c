@@ -28,7 +28,6 @@ void sanity(int n) {
         }
 
 //        printf(1, "End CPU\n");
-
         exit();
       } else if (getpid() % 3 == 1) // S-CPU
       {
@@ -41,13 +40,11 @@ void sanity(int n) {
         }
 
 //        printf(1, "End S-CPU\n");
-
         exit();
       } else if (getpid() % 3 == 2) {
         for (int l = 0; l < IOBOUNDINTERACTIONS; l++) {
           sleep(1);
         }
-
 //        printf(1, "End IO-CPU\n");
 
         exit();

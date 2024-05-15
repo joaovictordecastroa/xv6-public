@@ -11,7 +11,7 @@
 #define LOGSIZE                 (MAXOPBLOCKS*3)  // max data blocks in on-disk log
 #define NBUF                    (MAXOPBLOCKS*3)  // size of disk block cache
 #define FSSIZE                  1000  // size of file system in blocks
-#define INTERV                  5     // ticks to occur the preemption process
+#define INTERV                  5   // ticks to occur the preemption process
 #define CPUBOUNDLOOPSIZE        100
 #define CPUBOUNDITERACTIONS     1000000
 #define SCPULOOPSIZE            20
